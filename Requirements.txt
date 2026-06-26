@@ -6,3 +6,6 @@ sentence-transformers==3.1
 pydantic==2.9.2
 python-dotenv==1.0.1
 cohere
+Playwright
+BeautifulSoup4
+spaCy

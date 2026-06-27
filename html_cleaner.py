@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 import re
 
-input_file = Path(__file__).parent.parent / "playwright" / "result.txt"
+input_file = Path(__file__).parent/ "playwright" / "result.txt"
 
 output_file = Path(__file__).parent / "cleaned_result.txt"
 

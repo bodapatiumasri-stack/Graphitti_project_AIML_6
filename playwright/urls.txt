@@ -1,4 +1,0 @@
-https://example.com
-https://quotes.toscrape.com
-https://en.wikipedia.org/wiki/Diabetes?utm_source=chatgpt.com
-https://en.wikipedia.org/wiki/Diabetes

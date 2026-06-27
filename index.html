@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GRAPHITTI</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    
+      <div>
+        <h1 class="main-title">
+          <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="16" y="16" width="6" height="6" rx="1"/>
+          <rect x="2" y="16" width="6" height="6" rx="1"/>
+          <rect x="9" y="2" width="6" height="6" rx="1"/>
+          <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/>
+          <path d="M12 12V8"/>
+          </svg>
+         GRAPHITTI
+        </h1>
+        <div class="tagline-row">
+          <span class="tagline-line"></span>
+          <p class="tagline">Graph-Native Web Intelligence</p>
+          <span class="tagline-line"></span>
+        </div>
+      </div>
+
+    <div class="main-container">
+      
+      <div class="input-group">
+        <h2 class="input-label question-heading">
+          <svg class="heading-icon question-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
+          <path d="M12 17h.01"/>
+          </svg>
+        Ask a Medical Question
+        </h2>
+        <input
+        type="text"
+        placeholder="For example: What are the prevention methods for dengue?"
+        class="text-input js-question-input">
+        <p class="example-text">
+        Ask about topics available in the medical knowledge base.
+        </p>
+      </div>
+
+      <div class="button-container">
+        <button class="ask-button js-ask-button">
+            <svg class="button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/>
+            <path d="m21.854 2.147-10.94 10.939"/>
+            </svg>
+          Get Answer
+        </button>
+      </div>
+
+      <div class="result-section">
+
+        <div class="answer-section">
+          <h2 class="result-heading answer-heading">
+            <svg class="heading-icon answer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>
+            </svg>
+          Answer
+          </h2>
+          <div class="answer-box">
+            <p class="answer-text">No answer yet.</p>
+          </div>
+        </div>
+
+      <div class="status-section">
+        <h2 class="result-heading status-heading">
+          <svg class="heading-icon graph-status-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.75"></circle>
+            <circle cx="5" cy="18" r="2.75"></circle>
+            <circle cx="19" cy="18" r="2.75"></circle>
+            <path d="M10.7 6.5 6.3 16.5"></path>
+            <path d="m13.3 6.5 4.4 10"></path>
+            <path d="M7 18h10"></path>
+          </svg>
+          Knowledge Graph Status
+          </h2>
+          <div class="status-box">
+            <p class="status-text"><span    class="status-dot">&bull;</span>
+            Medical knowledge base ready</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <p> Graphitti &mdash; Turning websites into knowledge graphs and answers.
+        <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/>
+        <path d="M20 2v4"/>
+        <path d="M22 4h-4"/>
+        <circle cx="4" cy="20" r="2"/>
+        </svg>
+      </p>
+    </div>
+
+   
+  <script src="script.js"></script>
+  </body>
+</html>

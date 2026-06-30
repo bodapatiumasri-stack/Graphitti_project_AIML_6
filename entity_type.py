@@ -8,8 +8,27 @@ from pathlib import Path
 nlp = spacy.load("en_core_web_sm")
 
 # Read URL
-urls_file = Path(__file__).parent/ "playwright" / "urls.txt"
-url = urls_file.read_text(encoding="utf-8").splitlines()[0]
+urls_file = Path(__file__).parent / "playwright" / "urls.txt"
+
+# Track the current index using a file so it remembers across terminal runs
+counter_file = Path(__file__).parent / "counter.txt"
+if not counter_file.exists():
+    counter_file.write_text("0")
+
+# Load the current index value
+urls_crawled = int(counter_file.read_text().strip())
+
+# Read the lines and grab the current URL based on our variable
+all_urls = urls_file.read_text(encoding="utf-8").splitlines()
+
+# Prevent crashing if we run out of URLs
+if urls_crawled < len(all_urls):
+    url = all_urls[urls_crawled]
+    counter_file.write_text(str(urls_crawled + 1))
+else:
+    print("All URLs have already been processed! Resetting counter.")
+    counter_file.write_text("0")
+    url = all_urls[0]
 
 # Read cleaned text
 input_file = Path(__file__).parent/ "cleaned_result.txt"
@@ -29,7 +48,7 @@ for ent in doc.ents:
         "label": ent.label_
     })
 
-# Extract relationships (subject-verb-object)
+# Extract relationships 
 relationships = []
 for token in doc:
     if token.dep_ == "ROOT":
@@ -50,7 +69,6 @@ for token in doc:
 print(f"Entities found: {len(entities)}")
 print(f"Relationships found: {len(relationships)}")
 
-# Send to your backend
 response = requests.post("http://localhost:8000/ingest", json={
     "url": url,
     "page_title": page_title,

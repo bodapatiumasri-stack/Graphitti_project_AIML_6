@@ -28,8 +28,8 @@ ret = RetrievalEngine(kg)
 class IngestRequest(BaseModel):
     url: str
     page_title: Optional[str] = ""
-    entities: list[dict]       # [{"text": "Aspirin", "label": "DRUG"}, ...]
-    relationships: list[dict]  # [{"source": "Aspirin", "relation": "TREATS", "target": "Headache"}, ...]
+    entities: list[dict]     
+    relationships: list[dict]  
     raw_text: str              # cleaned page text
 
 class QueryRequest(BaseModel):
@@ -66,12 +66,6 @@ def ingest(data: IngestRequest):
 
 @app.post("/query")
 def query(req: QueryRequest):
-    """
-    QUERY PHASE — called by frontend with only the user's question.
-    Searches across ALL stored graphs and returns an AI-generated answer.
-
-    Frontend sends:  { "question": "What are symptoms of diabetes?" }
-    """
     try:
         context, sources, graph_nodes = ret.retrieve_all(query=req.question)
         answer = generate_answer(query=req.question, context=context)

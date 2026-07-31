@@ -598,6 +598,7 @@ def list_chats():
 
 @app.delete("/chat/{chat_id}")
 def delete_chat(chat_id: str):
+
     if chat_id in chat_histories:
         del chat_histories[chat_id]
         _save_chat_histories_to_disk()

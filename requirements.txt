@@ -4,7 +4,7 @@ neo4j==5.23.0
 chromadb==0.5.5
 sentence-transformers==3.1.1
 rank-bm25==0.2.2
-Groq
+groq
 pydantic==2.9.2
 python-dotenv==1.0.1
 playwright

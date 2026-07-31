@@ -1,5 +1,5 @@
 
-const API_BASE_URL = "https://platter-sandbox-derby.ngrok-free.dev";
+const API_BASE_URL = "https://graphitti-project-aiml-6.onrender.com";
 
 const conversation = document.getElementById('conversation');
 const userInput = document.getElementById('userInput');

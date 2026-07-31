@@ -1,0 +1,12 @@
+{
+  "name": "railway-app",
+  "version": "1.0.0",
+  "description": "Production setup for Railway deployment",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

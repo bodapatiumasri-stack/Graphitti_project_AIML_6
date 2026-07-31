@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graphitti - Medical Knowledge Graph</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #090d16; color: #f8fafc; overflow: hidden; }
+
+    #header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #0f172a; border-bottom: 1px solid #1e293b; height: 65px; }
+    #controls { display: flex; gap: 10px; align-items: center; }
+    input, select, button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px 14px; border-radius: 8px; font-weight: 500; outline: none; font-size: 0.85rem; }
+    button { background: #2563eb; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+
+    #legend { position: absolute; bottom: 20px; left: 20px; background: rgba(15, 23, 42, 0.94); padding: 14px 18px; border-radius: 10px; border: 1px solid #334155; z-index: 10; font-size: 0.82rem; backdrop-filter: blur(8px); max-width: 320px; }
+    #legend-title { font-weight: bold; color: #60a5fa; margin-bottom: 10px; display:flex; justify-content: space-between; align-items:center; }
+    .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.15s; user-select: none; }
+    .legend-item:hover { background: rgba(255,255,255,0.06); }
+    .legend-item.disabled { opacity: 0.35; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .legend-count { margin-left: auto; color: #94a3b8; font-size: 0.75rem; }
+
+    #info-panel { display: none; position: absolute; top: 85px; right: 25px; background: #0f172a; border: 1px solid #334155; padding: 16px; border-radius: 10px; width: 300px; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    #info-panel .close-btn { float: right; cursor: pointer; color: #64748b; font-size: 1.1rem; line-height: 1; }
+    #info-panel .close-btn:hover { color: #f8fafc; }
+
+    #edge-panel {
+      display: none; position: absolute; z-index: 200;
+      background: #111a2e; border: 1px solid #38bdf8; border-radius: 12px;
+      padding: 16px 18px; min-width: 260px; max-width: 340px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.55), 0 0 0 1px rgba(56,189,248,0.15);
+      pointer-events: auto;
+    }
+    #edge-panel .close-btn { float: right; cursor: pointer; color: #64748b; font-size: 1.1rem; line-height: 1; margin-left: 10px; }
+    #edge-panel .close-btn:hover { color: #f8fafc; }
+    #edge-panel .relation-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    #edge-panel .node-chip { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; color: #0b1120; }
+    #edge-panel .arrow { color: #38bdf8; font-size: 1rem; }
+    #edge-panel .relation-label { display: inline-block; background: rgba(56,189,248,0.15); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 8px; }
+    #edge-panel .relation-extra { font-size: 0.78rem; color: #94a3b8; margin-top: 6px; }
+
+    #network { width: 100vw; height: calc(100vh - 65px); background: #090d16; }
+    #empty-state { display:none; position:absolute; top: 50%; left:50%; transform: translate(-50%,-50%); color:#64748b; font-size: 1rem; text-align:center; }
+    #loading { display:none; position:absolute; top: 50%; left:50%; transform: translate(-50%,-50%); color:#60a5fa; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h3>🧬 Graphitti Medical Knowledge Graph</h3>
+    <div id="controls">
+      <input type="text" id="urlInput" placeholder="Filter by URL or leave empty for ALL" style="width: 280px;">
+      <button onclick="loadGraph()">🔄 Refresh Graph</button>
+      <button onclick="resetView()" style="background:#334155;">🎯 Reset View</button>
+    </div>
+  </div>
+
+  <div id="info-panel">
+    <span class="close-btn" onclick="document.getElementById('info-panel').style.display='none'">✕</span>
+    <h4 id="info-title" style="color: #60a5fa; margin-bottom: 8px;">Node Details</h4>
+    <div id="info-body" style="font-size: 0.85rem; color: #cbd5e1;">Click any node to see its connections. Click a line to see the relationship.</div>
+  </div>
+
+  <!-- Relation popup, shown on edge click -->
+  <div id="edge-panel">
+    <span class="close-btn" onclick="hideEdgePanel()">✕</span>
+    <div class="relation-flow" id="edge-flow"></div>
+    <div class="relation-label" id="edge-relation-label"></div>
+    <div class="relation-extra" id="edge-extra"></div>
+  </div>
+
+  <div id="legend">
+    <div id="legend-title">Entity Categories <span style="font-weight:normal; color:#64748b; font-size:0.7rem;">(click to filter)</span></div>
+    <div class="legend-grid" id="legend-grid"></div>
+  </div>
+
+  <div id="network"></div>
+  <div id="loading">Loading graph…</div>
+  <div id="empty-state">No graph data yet. Crawl a page or clear the URL filter and refresh.</div>
+
+  <script>
+    const API_BASE = "https://platter-sandbox-derby.ngrok-free.dev";
+    let network = null;
+    let allNodes = [];  
+    let allEdges = []; 
+    let activeCategories = new Set();
+
+    const CATEGORY_STYLES = {
+      PAGE:      { shape: 'dot',     color: '#fbbf24', size: 28, emoji: '🌟', label: 'Topic Center' },
+      DISEASE:   { shape: 'dot',  color: '#ef4444', size: 24, emoji: '🔴', label: 'Disease / Condition' },
+      DRUG:      { shape: 'dot',      color: '#3b82f6', size: 20, emoji: '🔵', label: 'Drug / Medication' },
+      SYMPTOM:   { shape: 'dot',      color: '#f59e0b', size: 18, emoji: '🟠', label: 'Symptom' },
+      TREATMENT: { shape: 'dot', color: '#10b981', size: 22, emoji: '🟢', label: 'Treatment' },
+      ORGAN:     { shape: 'dot',  color: '#8b5cf6', size: 22, emoji: '🟣', label: 'Organ' },
+      CONCEPT:   { shape: 'dot',  color: '#64748b', size: 18, emoji: '⚪', label: 'General Concept' }
+    };
+
+    function categoryFor(label) {
+      const l = (label || '').toUpperCase();
+      if (l === 'PAGE') return 'PAGE';
+      if (l.includes('DISEASE') || l.includes('CONDITION')) return 'DISEASE';
+      if (l.includes('DRUG') || l.includes('MEDICATION')) return 'DRUG';
+      if (l.includes('SYMPTOM') || l.includes('SIDE_EFFECT')) return 'SYMPTOM';
+      if (l.includes('TREATMENT') || l.includes('SURGERY')) return 'TREATMENT';
+      if (l.includes('ORGAN')) return 'ORGAN';
+      return 'CONCEPT';
+    }
+
+    function getNodeStyle(category) {
+      return CATEGORY_STYLES[category] || CATEGORY_STYLES.CONCEPT;
+    }
+
+    async function loadGraph() {
+      const url = document.getElementById("urlInput").value.trim();
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('empty-state').style.display = 'none';
+      hideEdgePanel();
+      document.getElementById('info-panel').style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/graph/data?url=${encodeURIComponent(url)}&limit=250`);
+        if (!res.ok) {
+          throw new Error(`API returned ${res.status} ${res.statusText}`);
+        }
+        const data = await res.json();
+        console.log('[Graphitti] raw API response:', data);
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        allNodes = (data.nodes || []).map(n => {
+          const category = categoryFor(n.label);
+          return {
+            id: n.id || n.text,
+            text: n.text,
+            category,
+            group: category
+          };
+        });
+
+        allEdges = (data.edges || []).map((e, i) => ({
+          id: 'e' + i,
+          from: e.from || e.source,
+          to: e.to || e.target,
+          relation: e.relation || 'RELATED_TO',
+          properties: e.properties || {}
+        }));
+
+        activeCategories = new Set();
+        buildLegend();
+        renderFiltered();
+
+        if (allNodes.length === 0) {
+          document.getElementById('empty-state').innerText = 'No graph data yet. Crawl a page or clear the URL filter and refresh.';
+          document.getElementById('empty-state').style.display = 'block';
+        } else if (allEdges.length === 0) {
+          document.getElementById('empty-state').innerText =
+            `Loaded ${allNodes.length} nodes but 0 relationships from the API. Check that relationships were ingested for this data (see console for raw response).`;
+          document.getElementById('empty-state').style.display = 'block';
+        }
+      } catch (err) {
+        console.error("Error loading graph:", err);
+        document.getElementById('empty-state').innerText = `⚠️ ${err.message || err}`;
+        document.getElementById('empty-state').style.display = 'block';
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+    function buildLegend() {
+      const counts = {};
+      allNodes.forEach(n => { counts[n.category] = (counts[n.category] || 0) + 1; });
+
+      const grid = document.getElementById('legend-grid');
+      grid.innerHTML = '';
+      Object.keys(CATEGORY_STYLES).forEach(cat => {
+        if (!counts[cat]) return; // only show categories present in data
+        const style = CATEGORY_STYLES[cat];
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.id = 'legend-' + cat;
+        item.innerHTML = `<span class="dot" style="background:${style.color};"></span>${style.emoji} ${style.label}<span class="legend-count">${counts[cat]}</span>`;
+        item.onclick = () => toggleCategory(cat, item);
+        grid.appendChild(item);
+      });
+    }
+
+    function toggleCategory(cat, el) {
+      if (activeCategories.has(cat)) {
+        activeCategories.delete(cat);
+        el.classList.remove('disabled');
+      } else {
+        activeCategories.add(cat);
+        el.classList.add('disabled');
+      }
+      renderFiltered();
+    }
+    function renderFiltered() {
+      const visibleNodes = allNodes.filter(n => !activeCategories.has(n.category));
+      const visibleIds = new Set(visibleNodes.map(n => n.id));
+      const visibleEdges = allEdges.filter(e => visibleIds.has(e.from) && visibleIds.has(e.to));
+      renderNetwork(visibleNodes, visibleEdges);
+    }
+
+    function renderNetwork(nodesArray, edgesArray) {
+      const container = document.getElementById('network');
+
+      const visNodes = nodesArray.map(n => {
+        const style = getNodeStyle(n.category);
+        return {
+          id: n.id,
+          label: n.category === 'PAGE' ? `${style.emoji} ${n.text}` : n.text,
+          shape: style.shape,
+          color: { background: style.color, border: '#0b1120', highlight: { background: style.color, border: '#ffffff' } },
+          size: style.size,
+          font: { color: '#ffffff', size: 14, strokeWidth: 2, strokeColor: '#090d16' },
+          borderWidth: 2
+        };
+      });
+
+      const visEdges = edgesArray.map(e => ({
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        arrows: 'to',
+        color: { color: '#334155', highlight: '#38bdf8', hover: '#60a5fa' },
+        width: 1.5,
+        hoverWidth: 3,
+        selectionWidth: 3,
+        smooth: { type: 'continuous' }
+      }));
+
+      console.log(`[Graphitti] rendering ${nodesArray.length} nodes, ${edgesArray.length} edges`);
+
+      const data = {
+        nodes: new vis.DataSet(visNodes),
+        edges: new vis.DataSet(visEdges)
+      };
+
+      const options = {
+        interaction: { hover: true, tooltipDelay: 150, hideEdgesOnDrag: true },
+        physics: {
+          barnesHut: {
+            gravitationalConstant: -18000,
+            centralGravity: 0.2,
+            springLength: 180,
+            springConstant: 0.05
+          },
+          stabilization: { iterations: 150 }
+        },
+        edges: { selectionWidth: 2.5, hoverWidth: 2.5 }
+      };
+
+      if (network) network.destroy();
+      network = new vis.Network(container, data, options);
+
+      // Node click -> connection summary panel
+      network.on("click", function (params) {
+        hideEdgePanel();
+
+        if (params.edges.length > 0 && params.nodes.length === 0) {
+          const edgeId = params.edges[0];
+          const edgeObj = edgesArray.find(e => e.id === edgeId);
+          if (edgeObj) showEdgePanel(edgeObj, params.pointer.DOM);
+          return;
+        }
+
+        const infoPanel = document.getElementById("info-panel");
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          const nodeObj = nodesArray.find(n => n.id === nodeId);
+          const connectedEdges = network.getConnectedEdges(nodeId);
+
+          const relLines = connectedEdges.slice(0, 8).map(eid => {
+            const e = edgesArray.find(x => x.id === eid);
+            if (!e) return '';
+            const other = e.from === nodeId ? e.to : e.from;
+            const arrow = e.from === nodeId ? '→' : '←';
+            return `<div style="margin:3px 0;"><span style="color:#38bdf8;">${arrow} ${e.relation}</span> ${other}</div>`;
+          }).join('');
+
+          const style = getNodeStyle(nodeObj ? nodeObj.category : 'CONCEPT');
+          document.getElementById("info-title").innerText = nodeObj ? nodeObj.text : nodeId;
+          document.getElementById("info-body").innerHTML =
+            `<div style="margin-bottom:8px; color:#94a3b8;">${style.emoji} ${style.label} &middot; ${connectedEdges.length} connection(s)</div>${relLines}` +
+            (connectedEdges.length > 8 ? `<div style="color:#64748b; margin-top:6px;">…and ${connectedEdges.length - 8} more</div>` : '');
+          infoPanel.style.display = "block";
+        } else {
+          infoPanel.style.display = "none";
+        }
+      });
+    }
+
+    function showEdgePanel(edgeObj, pointerDOM) {
+      const fromNode = allNodes.find(n => n.id === edgeObj.from);
+      const toNode = allNodes.find(n => n.id === edgeObj.to);
+      const fromStyle = getNodeStyle(fromNode ? fromNode.category : 'CONCEPT');
+      const toStyle = getNodeStyle(toNode ? toNode.category : 'CONCEPT');
+
+      document.getElementById('edge-flow').innerHTML = `
+        <span class="node-chip" style="background:${fromStyle.color};">${fromNode ? fromNode.text : edgeObj.from}</span>
+        <span class="arrow">→</span>
+        <span class="node-chip" style="background:${toStyle.color};">${toNode ? toNode.text : edgeObj.to}</span>
+      `;
+      document.getElementById('edge-relation-label').innerText = edgeObj.relation.replace(/_/g, ' ');
+
+      const props = edgeObj.properties || {};
+      const propKeys = Object.keys(props).filter(k => props[k] !== null && props[k] !== '');
+      document.getElementById('edge-extra').innerHTML = propKeys.length
+        ? propKeys.map(k => `<div><b>${k}:</b> ${props[k]}</div>`).join('')
+        : '';
+
+      const panel = document.getElementById('edge-panel');
+      panel.style.display = 'block';
+      const containerRect = document.getElementById('network').getBoundingClientRect();
+      const panelWidth = 340, panelHeight = 170;
+      let left = containerRect.left + pointerDOM.x + 20;
+      let top = containerRect.top + pointerDOM.y + 20;
+      if (left + panelWidth > window.innerWidth) left = window.innerWidth - panelWidth - 20;
+      if (top + panelHeight > window.innerHeight) top = window.innerHeight - panelHeight - 20;
+      if (left < 10) left = 10;
+      if (top < 10) top = 10;
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+    }
+
+    function hideEdgePanel() {
+      document.getElementById('edge-panel').style.display = 'none';
+    }
+
+    function resetView() {
+      if (network) network.fit({ animation: true });
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('url')) {
+      document.getElementById('urlInput').value = urlParams.get('url');
+    }
+
+    window.onload = loadGraph;
+  </script>
+</body>
+</html>

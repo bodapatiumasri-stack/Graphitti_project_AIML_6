@@ -1,7 +1,7 @@
 
 const API_BASE_URL = "https://platter-sandbox-derby.ngrok-free.dev";
 
-
+const GRAPH_BASE_URL = "https://graphitti-project-aiml-6.onrender.com/graph";
 
 const conversation = document.getElementById('conversation');
 const userInput = document.getElementById('userInput');
@@ -152,17 +152,28 @@ async function safeFetch(url, options = {}){
 }
 
 
-async function queryBackend(question, chatId){
+
+async function queryBackend(question, chatId, targetUrl = null) {
   const res = await safeFetch(`${API_BASE_URL}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, chat_id: chatId })
   });
-  if(!res.ok){
+
+  if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
     throw new Error(extractErrorMessage(errBody, `Backend returned ${res.status}`));
   }
-  return res.json();
+
+  const data = await res.json();
+
+
+  if (targetUrl) {
+    const encodedUrl = encodeURIComponent(targetUrl);
+    data.graph_url = `${GRAPH_BASE_URL}?url=${encodedUrl}`;
+  }
+
+  return data;
 }
 
 function sendMessage(){
@@ -605,11 +616,7 @@ async function loadChatsFromBackend(){
   }
 }
 
-function openGraph(targetUrl) {
-    const encodedUrl = encodeURIComponent(targetUrl);
-    const graphIframeUrl = /graph?url=${encodedUrl};
-    window.open(graphIframeUrl, '_blank');
-}
+
 
 renderHistoryList();
 renderKgCards();

@@ -1,11 +1,7 @@
 
 const API_BASE_URL = "https://platter-sandbox-derby.ngrok-free.dev";
 
-function openGraph(targetUrl) {
-    const encodedUrl = encodeURIComponent(targetUrl);
-    const graphIframeUrl = /graph?url=${encodedUrl};
-    window.open(graphIframeUrl, '_blank');
-}
+
 
 const conversation = document.getElementById('conversation');
 const userInput = document.getElementById('userInput');
@@ -609,6 +605,11 @@ async function loadChatsFromBackend(){
   }
 }
 
+function openGraph(targetUrl) {
+    const encodedUrl = encodeURIComponent(targetUrl);
+    const graphIframeUrl = /graph?url=${encodedUrl};
+    window.open(graphIframeUrl, '_blank');
+}
 
 renderHistoryList();
 renderKgCards();

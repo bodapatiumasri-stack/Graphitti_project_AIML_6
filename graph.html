@@ -64,7 +64,6 @@
     <div id="info-body" style="font-size: 0.85rem; color: #cbd5e1;">Click any node to see its connections. Click a line to see the relationship.</div>
   </div>
 
-  <!-- Relation popup, shown on edge click -->
   <div id="edge-panel">
     <span class="close-btn" onclick="hideEdgePanel()">✕</span>
     <div class="relation-flow" id="edge-flow"></div>
@@ -164,7 +163,7 @@
         }
       } catch (err) {
         console.error("Error loading graph:", err);
-        document.getElementById('empty-state').innerText = `⚠️ ${err.message || err}`;
+        document.getElementById('empty-state').innerText = ` ${err.message || err}`;
         document.getElementById('empty-state').style.display = 'block';
       } finally {
         document.getElementById('loading').style.display = 'none';
@@ -177,7 +176,7 @@
       const grid = document.getElementById('legend-grid');
       grid.innerHTML = '';
       Object.keys(CATEGORY_STYLES).forEach(cat => {
-        if (!counts[cat]) return; // only show categories present in data
+        if (!counts[cat]) return; 
         const style = CATEGORY_STYLES[cat];
         const item = document.createElement('div');
         item.className = 'legend-item';
@@ -257,7 +256,7 @@
       if (network) network.destroy();
       network = new vis.Network(container, data, options);
 
-      // Node click -> connection summary panel
+
       network.on("click", function (params) {
         hideEdgePanel();
 

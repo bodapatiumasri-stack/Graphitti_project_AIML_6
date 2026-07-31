@@ -75,7 +75,7 @@ BM25 Keyword Search
 ### Language Model
 Groq API (Llama 3.3 70B)
 ### Deployment
-Render
+we deployed in Railway but due to some errors its not working
 
 ---
 

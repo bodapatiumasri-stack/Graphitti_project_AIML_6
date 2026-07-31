@@ -51,7 +51,7 @@ class OrchestratorAgent:
         self.synthesizer = ContextSynthesizerAgent()
 
     def run(self, question: str) -> Dict:
-        # 1. Intent Routing
+     
         intent_info = self.router.analyze_intent(question)
         intent_type = intent_info["intent"]
         
@@ -64,7 +64,7 @@ class OrchestratorAgent:
                 "intent": "greeting"
             }
 
-        # 2. Select & Execute Strategy
+   
         if intent_type == "multi_hop_graph":
             strategy_name = "multi_hop_graph_traversal"
             raw_results = self.retrieval.hybrid_search(question, top_k=6)
@@ -75,7 +75,7 @@ class OrchestratorAgent:
             strategy_name = "dense_semantic_search"
             raw_results = self.retrieval.hybrid_search(question, top_k=3)
 
-        # 3. Context Synthesis
+      
         final_result = self.synthesizer.synthesize(raw_results)
         final_result["strategy"] = strategy_name
         final_result["intent"] = intent_type

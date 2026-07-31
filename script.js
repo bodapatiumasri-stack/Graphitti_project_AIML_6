@@ -64,7 +64,6 @@ function renderConversation(messages){
   conversation.scrollTop = conversation.scrollHeight;
 }
 
-// Renders the "Recent chats" list, including a per-row delete ("×") button.
 function renderHistoryList(){
   historyList.innerHTML = '';
   if(chats.length === 0){
@@ -117,8 +116,6 @@ function extractErrorMessage(errBody, fallback){
   return fallback;
 }
 
-// ==== Helper: fetch wrapper with a clear error when the backend can't be
-// reached at all (server down, wrong URL, CORS, ngrok tunnel dead, etc.) ====
 async function safeFetch(url, options = {}){
   const headers = {
     'ngrok-skip-browser-warning': 'true',

@@ -2,7 +2,9 @@ import os
 import sys
 import json
 import subprocess
+import requests
 from pathlib import Path
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional, List, Dict
@@ -96,6 +98,7 @@ def _save_crawled_sources_to_disk():
         print(f"Warning saving crawled_sources to disk: {e}")
 
 
+
 class IngestRequest(BaseModel):
     url: str
     page_title: Optional[str] = ""
@@ -110,6 +113,35 @@ class QueryRequest(BaseModel):
 class CrawlRequest(BaseModel):
     url: str
     depth: Optional[int] = 1
+
+
+
+def _is_valid_url(url: str) -> bool:
+    try:
+        result = urlparse(url)
+        return result.scheme in ("http", "https") and bool(result.netloc)
+    except Exception:
+        return False
+
+
+def _is_reachable_url(url: str, timeout: float = 6.0) -> tuple[bool, str]:
+    headers = {"User-Agent": "Mozilla/5.0 (Graphitti crawler validation)"}
+    try:
+        requests.head(url, headers=headers, timeout=timeout, allow_redirects=True)
+        return True, ""
+    except requests.exceptions.SSLError:
+        return False, "SSL certificate error — the site's certificate could not be verified."
+    except requests.exceptions.ConnectionError:
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True, stream=True)
+            resp.close()
+            return True, ""
+        except requests.exceptions.RequestException:
+            return False, "Could not connect — the domain may not exist or is refusing connections."
+    except requests.exceptions.Timeout:
+        return False, f"The site did not respond within {timeout:.0f}s."
+    except requests.exceptions.RequestException as e:
+        return False, f"Could not reach URL: {e}"
 
 
 def _extract_topic_title(url: str, raw_title: str = "") -> str:
@@ -170,6 +202,7 @@ def _save_chat(chat_id: str, question: str, answer: str):
 
 
 def _get_chat_history_for_llm(chat_id: str) -> List[Dict[str, str]]:
+
     formatted = []
     for turn in chat_histories.get(chat_id, []):
         formatted.append({"role": "user", "content": turn["question"]})
@@ -228,7 +261,6 @@ def query(req: QueryRequest):
     """Medical Chatbot endpoint with Retrieval-Augmented Generation & Memory."""
     try:
         chat_id = req.chat_id or "default"
-
         formatted_history = _get_chat_history_for_llm(chat_id)
 
         clean_q = req.question.lower().strip()
@@ -244,6 +276,7 @@ def query(req: QueryRequest):
                 "strategy": "greeting",
                 "has_information": True
             }
+
         result = orchestrator.run(req.question)
         context = result.get("context", "")
         has_information = bool(context and len(context.strip()) > 30)
@@ -275,6 +308,22 @@ def query(req: QueryRequest):
 def crawl(req: CrawlRequest, background_tasks: BackgroundTasks):
     try:
         url_clean = req.url.strip()
+
+        if not url_clean:
+            raise HTTPException(status_code=400, detail="URL cannot be empty.")
+        if not _is_valid_url(url_clean):
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{url_clean}' isn't a valid URL. Include the scheme, e.g. https://www.webmd.com/..."
+            )
+
+        reachable, reason = _is_reachable_url(url_clean)
+        if not reachable:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Can't crawl '{url_clean}': {reason}"
+            )
+
         depth_val = req.depth if req.depth in [1, 2] else 1
         display_title = _extract_topic_title(url_clean)
 
@@ -307,6 +356,7 @@ def crawl(req: CrawlRequest, background_tasks: BackgroundTasks):
                         }
             except Exception:
                 pass
+
         crawled_sources[url_clean] = {
             "title":      display_title,
             "url":        url_clean,
@@ -324,6 +374,8 @@ def crawl(req: CrawlRequest, background_tasks: BackgroundTasks):
             "depth":   depth_val,
             "title":   display_title
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.get("/status")
@@ -400,7 +452,7 @@ def ingest(data: IngestRequest):
         }
         _save_crawled_sources_to_disk()
 
-        print(f"Ingestion successful for {data.url} ({nodes_added} nodes)")
+        print(f"✅ Ingestion successful for {data.url} ({nodes_added} nodes)")
         return {"status": "success", "url": data.url, "nodes_added": nodes_added}
     except Exception as e:
         print(f"Ingest Error: {e}")

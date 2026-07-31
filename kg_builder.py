@@ -1,133 +1,80 @@
 import os
-from datetime import datetime
 from neo4j import GraphDatabase
-
-NEO4J_URI      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-NEO4J_USER     = os.getenv("NEO4J_USER",     "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
-
 
 class KGBuilder:
     def __init__(self):
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-        self._setup()
+        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        user = os.getenv("NEO4J_USER", os.getenv("NEO4J_USERNAME", "neo4j"))
+        password = os.getenv("NEO4J_PASSWORD", "password")
+        
+        try:
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
+            self.verify_connection()
+            print(" Neo4j connected successfully!")
+        except Exception as e:
+            print(f"⚠️ Neo4j connection error: {e}")
+            self.driver = None
 
-    def _setup(self):
-        with self.driver.session() as s:
-            s.run("CREATE INDEX page_url IF NOT EXISTS FOR (p:Page) ON (p.url)")
-            s.run("CREATE INDEX entity_text IF NOT EXISTS FOR (e:Entity) ON (e.text)")
+    def verify_connection(self) -> bool:
+        if not self.driver: return False
+        try:
+            with self.driver.session() as s:
+                return s.run("RETURN 1 AS test").single()["test"] == 1
+        except Exception: return False
 
-    def build_or_update(self, url, entities, relationships, raw_text, page_title=""):
-        ts = datetime.utcnow().isoformat()
-        nodes_added = 0
-        rels_added  = 0
+    def close(self):
+        if self.driver: self.driver.close()
 
-        with self.driver.session() as s:
-            s.run("""
+    def get_all_stats(self) -> dict:
+        if not self.driver: return {"nodes": 0, "relationships": 0}
+        try:
+            with self.driver.session() as s:
+                n = s.run("MATCH (n) RETURN count(n) AS count").single()["count"]
+                r = s.run("MATCH ()-[r]->() RETURN count(r) AS count").single()["count"]
+                return {"nodes": n, "relationships": r}
+        except Exception: return {"nodes": 0, "relationships": 0}
+
+    def build_or_update(self, url: str, entities: list, relationships: list, raw_text: str, page_title: str = ""):
+        if not self.driver:
+            raise Exception("Neo4j driver is not connected.")
+            
+        with self.driver.session() as session:
+            # 1. Create Page Root Node
+            title_val = page_title or url.replace("https://", "").replace("http://", "").split("/")[0]
+            session.run("""
                 MERGE (p:Page {url: $url})
-                SET p.title = $title, p.last_crawled = $ts, p.snippet = $snippet
-            """, url=url, title=page_title, ts=ts, snippet=raw_text[:400])
+                ON CREATE SET p.title = $title, p.created_at = timestamp()
+                ON MATCH SET p.title = $title
+            """, url=url, title=title_val)
 
+            # 2. Ingest Entities and Link to Page Node (:Page)-[:MENTIONS]->(:Entity)
             for ent in entities:
-                r = s.run("""
-                    MERGE (e:Entity {text: $text, label: $label})
-                    ON CREATE SET e.created_at = $ts
-                    WITH e
-                    MATCH (p:Page {url: $url})
-                    MERGE (p)-[:MENTIONS]->(e)
-                    RETURN e
-                """, text=ent["text"], label=ent["label"], ts=ts, url=url)
-                nodes_added += r.consume().counters.nodes_created
-
+                text_val = ent.get("text") or ent.get("name")
+                label_val = (ent.get("label") or ent.get("type") or "CONCEPT").upper().replace(" ", "_")
+                
+                if text_val and len(text_val) > 1:
+                    session.run("""
+                        MERGE (e:Entity {text: $text})
+                        ON CREATE SET e.label = $label, e.source_url = $url, e.created_at = timestamp()
+                        ON MATCH SET e.label = coalesce($label, e.label), e.source_url = $url
+                        WITH e
+                        MATCH (p:Page {url: $url})
+                        MERGE (p)-[:MENTIONS]->(e)
+                    """, text=text_val, label=label_val, url=url)
+            
+            # 3. Ingest Entity-to-Entity Dynamic Relationships
             for rel in relationships:
-                r = s.run("""
-                    MERGE (a:Entity {text: $src})
-                    MERGE (b:Entity {text: $tgt})
-                    MERGE (a)-[r:RELATION {type: $rel_type}]->(b)
-                    ON CREATE SET r.source_url = $url, r.created_at = $ts
-                    RETURN r
-                """, src=rel["source"], tgt=rel["target"],
-                     rel_type=rel["relation"], url=url, ts=ts)
-                rels_added += r.consume().counters.relationships_created
+                src = rel.get("source")
+                tgt = rel.get("target")
+                rel_type = (rel.get("relation") or rel.get("type") or "ASSOCIATED_WITH").upper().replace(" ", "_")
+                
+                if src and tgt and src != tgt:
+                    query = f"""
+                        MATCH (a:Entity {{text: $src}})
+                        MATCH (b:Entity {{text: $tgt}})
+                        MERGE (a)-[r:{rel_type}]->(b)
+                        ON CREATE SET r.source_url = $url, r.type = $rel_type
+                    """
+                    session.run(query, src=src, tgt=tgt, url=url, rel_type=rel_type)
 
-        return {"nodes_added": nodes_added, "relationships_added": rels_added}
-
-    def graph_search_all(self, query: str) -> dict:
-        keywords = self._keywords_from_query(query)
-        if not keywords:
-            return {"nodes": [], "triples": [], "context_text": "", "sources": []}
-
-        pattern = "(?i).*(" + "|".join(keywords) + ").*"
-
-        with self.driver.session() as s:
-            seed_entities = [r["text"] for r in s.run("""
-                MATCH (e:Entity)
-                WHERE e.text =~ $pattern
-                RETURN e.text AS text
-                LIMIT 10
-            """, pattern=pattern)]
-
-            if not seed_entities:
-                return {"nodes": [], "triples": [], "context_text": "", "sources": []}
-
-            outward = [dict(r) for r in s.run("""
-                MATCH (a:Entity)-[r:RELATION]->(b:Entity)
-                WHERE a.text IN $seeds
-                RETURN a.text AS src, r.type AS rel, b.text AS tgt, r.source_url AS url
-                LIMIT 30
-            """, seeds=seed_entities)]
-
-            inward = [dict(r) for r in s.run("""
-                MATCH (a:Entity)-[r:RELATION]->(b:Entity)
-                WHERE b.text IN $seeds
-                RETURN a.text AS src, r.type AS rel, b.text AS tgt, r.source_url AS url
-                LIMIT 30
-            """, seeds=seed_entities)]
-
-        triples = []
-        nodes   = set(seed_entities)
-        sources = set()
-
-        for rec in outward + inward:
-            triple = f"{rec['src']} --[{rec['rel']}]--> {rec['tgt']}"
-            triples.append(triple)
-            nodes.add(rec["src"])
-            nodes.add(rec["tgt"])
-            if rec["url"]:
-                sources.add(rec["url"])
-
-        context_text = "\n".join(triples) if triples else ", ".join(seed_entities)
-
-        return {
-            "nodes":        list(nodes),
-            "triples":      triples,
-            "context_text": context_text,
-            "sources":      list(sources),
-        }
-
-    def _keywords_from_query(self, query: str) -> list[str]:
-        stopwords = {
-            "what", "is", "are", "the", "a", "an", "of", "for", "to",
-            "how", "does", "do", "and", "or", "in", "on", "at", "with",
-            "about", "tell", "me", "explain", "describe", "give", "list",
-            "which", "who", "when", "why", "can", "used", "treat", "treats"
-        }
-        words = query.lower().split()
-        return [w.strip("?.,!") for w in words if w not in stopwords and len(w) > 2]
-
-    def kg_exists(self, url: str) -> bool:
-        with self.driver.session() as s:
-            result = s.run("MATCH (p:Page {url: $url}) RETURN p LIMIT 1", url=url)
-            return result.single() is not None
-
-    def get_stats(self, url: str) -> dict:
-        with self.driver.session() as s:
-            nodes = s.run("""
-                MATCH (p:Page {url: $url})-[:MENTIONS]->(e:Entity)
-                RETURN count(e) AS cnt
-            """, url=url).single()["cnt"]
-            rels = s.run("""
-                MATCH (p:Page {url: $url})-[:MENTIONS]->(a:Entity)-[:RELATION]->(:Entity)
-                RETURN count(*) AS cnt
-            """, url=url).single()["cnt"]
-        return {"nodes": nodes, "relationships": rels}
+        return {"nodes_added": len(entities) + 1}

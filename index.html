@@ -6,14 +6,14 @@
 <title>Graphitti — Medical AI Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="claude.css">
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
 <body>
 
   <div class="backdrop" id="backdrop"></div>
 
-
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">
@@ -51,7 +51,7 @@
     </div>
   </aside>
 
-
+  <!-- ADD WEBSITE MODAL -->
   <div class="modal-backdrop" id="addSiteModal">
     <div class="modal">
       <h3>Add a website</h3>
@@ -64,7 +64,7 @@
     </div>
   </div>
 
-
+  <!-- DELETE CHAT CONFIRMATION MODAL -->
   <div class="modal-backdrop" id="deleteChatModal">
     <div class="modal">
       <h3>Delete this chat?</h3>
@@ -76,7 +76,7 @@
     </div>
   </div>
 
- 
+  <!-- CHAT AREA -->
   <main class="chat-area">
     <div class="chat-header">
       <div class="header-left">
@@ -140,6 +140,6 @@
     </div>
   </main>
 
-<script src="script.js"></script>
+<script src="claude.js"></script>
 </body>
 </html>

@@ -1,7 +1,5 @@
-
-const API_BASE_URL = "https://platter-sandbox-derby.ngrok-free.dev";
-
-const GRAPH_BASE_URL = "https://graphitti-project-aiml-6.onrender.com/graph";
+// ✅ Live Render deployment URL
+const API_BASE_URL = "https://graphitti-project-aiml-6.onrender.com";
 
 const conversation = document.getElementById('conversation');
 const userInput = document.getElementById('userInput');
@@ -23,12 +21,10 @@ const kgEmpty = document.getElementById('kgEmpty');
 const kgCards = document.getElementById('kgCards');
 const depthToggle = document.getElementById('depthToggle');
 
-
 const deleteChatModal = document.getElementById('deleteChatModal');
 const deleteChatMessage = document.getElementById('deleteChatMessage');
 const deleteChatCancelBtn = document.getElementById('deleteChatCancelBtn');
 const deleteChatConfirmBtn = document.getElementById('deleteChatConfirmBtn');
-
 
 (function checkRequiredElements(){
   const required = {
@@ -49,10 +45,8 @@ const deleteChatConfirmBtn = document.getElementById('deleteChatConfirmBtn');
 
 const GREETING = "Hi, I'm your Graphitti medical assistant. Ask me about a condition, symptom, or treatment and I'll answer using the connected knowledge graph.";
 
-
 let chats = [];
 let currentChatId = null;
-
 
 let sites = [];
 let selectedDepth = 1;
@@ -70,7 +64,6 @@ function renderConversation(messages){
   messages.forEach(m => addMessage(m.text, m.sender, false));
   conversation.scrollTop = conversation.scrollHeight;
 }
-
 
 function renderHistoryList(){
   historyList.innerHTML = '';
@@ -113,7 +106,6 @@ function addMessage(text, sender, scroll = true){
   if(scroll) conversation.scrollTop = conversation.scrollHeight;
 }
 
-
 function extractErrorMessage(errBody, fallback){
   const detail = errBody && errBody.detail;
   if(typeof detail === 'string') return detail;
@@ -132,11 +124,8 @@ function escapeHtml(str){
   return div.innerHTML;
 }
 
-
 async function safeFetch(url, options = {}){
   const headers = {
-
-    'ngrok-skip-browser-warning': 'true',
     ...(options.headers || {})
   };
 
@@ -145,35 +134,22 @@ async function safeFetch(url, options = {}){
   }catch(err){
     console.error('safeFetch network failure:', err);
     throw new Error(
-      `Cannot reach backend at ${API_BASE_URL}. Is main.py running, and is ` +
-      `API_BASE_URL pointing at the right host/port? (${err.message})`
+      `Cannot reach backend at ${API_BASE_URL}. (${err.message})`
     );
   }
 }
 
-
-
-async function queryBackend(question, chatId, targetUrl = null) {
+async function queryBackend(question, chatId){
   const res = await safeFetch(`${API_BASE_URL}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, chat_id: chatId })
   });
-
-  if (!res.ok) {
+  if(!res.ok){
     const errBody = await res.json().catch(() => ({}));
     throw new Error(extractErrorMessage(errBody, `Backend returned ${res.status}`));
   }
-
-  const data = await res.json();
-
-
-  if (targetUrl) {
-    const encodedUrl = encodeURIComponent(targetUrl);
-    data.graph_url = `${GRAPH_BASE_URL}?url=${encodedUrl}`;
-  }
-
-  return data;
+  return res.json();
 }
 
 function sendMessage(){
@@ -184,7 +160,6 @@ function sendMessage(){
   let chat;
 
   if(isNewChat){
-
     currentChatId = 'chat_' + Date.now();
     chat = {
       id: currentChatId,
@@ -256,12 +231,10 @@ userInput.addEventListener('input', () => {
   userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
 });
 
-
 function mapBackendMessages(messages){
   const out = [];
   (messages || []).forEach(m => {
     if(m.question !== undefined || m.answer !== undefined){
-
       if(m.question) out.push({ text: m.question, sender: 'user' });
       if(m.answer) out.push({ text: m.answer, sender: 'bot' });
       return;
@@ -274,7 +247,6 @@ function mapBackendMessages(messages){
   });
   return out;
 }
-
 
 historyList.addEventListener('click', async (e) => {
   if(e.target.closest('.chat-delete')) return; 
@@ -291,7 +263,6 @@ historyList.addEventListener('click', async (e) => {
     renderConversation(chat.messages);
     return;
   }
-
 
   renderConversation([{ text: GREETING, sender: 'bot' }, { text: 'Loading…', sender: 'bot' }]);
   try{
@@ -312,7 +283,6 @@ historyList.addEventListener('click', async (e) => {
     renderHistoryList();
   }
 });
-
 
 let pendingDeleteChatId = null;
 
@@ -345,14 +315,12 @@ deleteChatConfirmBtn.addEventListener('click', async () => {
   if(!chatId) return;
   closeDeleteChatModal();
 
-
   chats = chats.filter(c => c.id !== chatId);
   if(currentChatId === chatId){
     startNewChat();
   }else{
     renderHistoryList();
   }
-
 
   try{
     const res = await safeFetch(`${API_BASE_URL}/chat/${encodeURIComponent(chatId)}`, { method: 'DELETE' });
@@ -370,7 +338,6 @@ deleteChatConfirmBtn.addEventListener('click', async () => {
 
 newChatBtn.addEventListener('click', startNewChat);
 
-
 function openSidebar(){
   sidebar.classList.add('open');
   backdrop.classList.add('show');
@@ -383,7 +350,6 @@ hamburgerBtn.addEventListener('click', () => {
   sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
 });
 backdrop.addEventListener('click', closeSidebar);
-
 
 function openSiteModal(){
   addSiteModal.classList.add('show');
@@ -405,7 +371,6 @@ function normalizeUrl(url){
   return u;
 }
 
-
 function siteLabelParts(url){
   try{
     const parsed = new URL(normalizeUrl(url));
@@ -423,7 +388,6 @@ function siteLabelParts(url){
     return { host: url.trim(), topic: null };
   }
 }
-
 
 function labelFor(site){
   const { host, topic } = siteLabelParts(site.url);
@@ -457,9 +421,9 @@ function renderKgCards(){
   }).join('');
 }
 
-
+// ✅ Corrected: Opens graph using relative route on live host
 function openGraphWindow(site){
-  const graphUrl = `${API_BASE_URL}/graph?url=${encodeURIComponent(site.url)}&ngrok-skip-browser-warning=true`;
+  const graphUrl = `/graph?url=${encodeURIComponent(site.url)}`;
   window.open(graphUrl, '_blank');
 }
 
@@ -469,7 +433,6 @@ kgCards.addEventListener('click', (e) => {
   const site = sites.find(s => s.id === btn.dataset.id);
   if(site) openGraphWindow(site);
 });
-
 
 async function pollCrawlStatus(site, attempt = 0){
   const MAX_ATTEMPTS = 30; 
@@ -540,19 +503,16 @@ confirmSiteBtn.addEventListener('click', async () => {
     }
     const data = await res.json();
 
-
     if(data.title) site.title = data.title;
     const finalLabelParts = labelFor(site);
     const finalLabel = finalLabelParts.topic ? `${finalLabelParts.host} — ${finalLabelParts.topic}` : finalLabelParts.host;
 
     if(data.status === 'already_crawled'){
- 
       site.status = 'indexed';
       renderKgCards();
       updateStatusFooter();
       addSystemMessage(data.message || `<b>${escapeHtml(finalLabel)}</b> was already in the knowledge graph.`);
     }else{
-
       renderKgCards();
       pollCrawlStatus(site);
     }
@@ -563,7 +523,6 @@ confirmSiteBtn.addEventListener('click', async () => {
     addSystemMessage(` Failed to start crawl for <b>${escapeHtml(label)}</b> (${err.message}). Please check the backend connection.`);
   }
 });
-
 
 async function loadSourcesFromBackend(){
   try{
@@ -585,7 +544,6 @@ async function loadSourcesFromBackend(){
   }
 }
 
-
 async function loadChatsFromBackend(){
   try{
     const res = await safeFetch(`${API_BASE_URL}/chat/list`);
@@ -596,7 +554,6 @@ async function loadChatsFromBackend(){
     const alreadyLoaded = {};
     chats.forEach(c => { if(c.messages) alreadyLoaded[c.id] = c.messages; });
 
-   
     const backendChats = list
       .map(c => ({
         id: c.chat_id,
@@ -616,7 +573,12 @@ async function loadChatsFromBackend(){
   }
 }
 
-
+// ✅ Corrected: Utility function to manually open graph with proper string syntax
+function openGraph(targetUrl) {
+    const encodedUrl = encodeURIComponent(targetUrl);
+    const graphIframeUrl = `/graph?url=${encodedUrl}`;
+    window.open(graphIframeUrl, '_blank');
+}
 
 renderHistoryList();
 renderKgCards();

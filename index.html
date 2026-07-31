@@ -1,121 +1,145 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>GRAPHITTI</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    
-      <div>
-        <h1 class="main-title">
-          <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="16" y="16" width="6" height="6" rx="1"/>
-          <rect x="2" y="16" width="6" height="6" rx="1"/>
-          <rect x="9" y="2" width="6" height="6" rx="1"/>
-          <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/>
-          <path d="M12 12V8"/>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graphitti — Medical AI Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+          <circle cx="10" cy="11" r="2.4" fill="#F4F2EA"/>
+          <circle cx="24" cy="9" r="2.4" fill="#F4F2EA"/>
+          <circle cx="17" cy="24" r="2.4" fill="#F4F2EA"/>
+          <line x1="10" y1="11" x2="24" y2="9" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+          <line x1="10" y1="11" x2="17" y2="24" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+          <line x1="24" y1="9" x2="17" y2="24" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Graphitti</h1>
+        <p>Graph-native web intelligence</p>
+      </div>
+    </div>
+
+    <button class="new-chat" id="newChatBtn">+ New chat</button>
+
+    <p class="section-label">Recent chats</p>
+    <ul class="history" id="historyList">
+      <li class="empty-history" id="emptyHistory">No chats yet — ask a question below to start one.</li>
+    </ul>
+
+    <div class="kg-section">
+      <p class="section-label" style="margin-bottom:10px;">Knowledge graph</p>
+      <p class="kg-empty" id="kgEmpty">Add a website to build its knowledge graph.</p>
+      <div id="kgCards"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="status-dot off" id="statusDot"></span>
+      <span id="statusText">Knowledge graph not connected</span>
+    </div>
+  </aside>
+
+  <!-- ADD WEBSITE MODAL -->
+  <div class="modal-backdrop" id="addSiteModal">
+    <div class="modal">
+      <h3>Add a website</h3>
+      <p>Graphitti will crawl this site and add it to the knowledge graph so the assistant can answer using it.</p>
+      <input type="url" id="siteUrlInput" placeholder="https://example.com">
+      <div class="modal-actions">
+        <button class="modal-btn" id="cancelSiteBtn">Cancel</button>
+        <button class="modal-btn primary" id="confirmSiteBtn">Add website</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CHAT CONFIRMATION MODAL -->
+  <div class="modal-backdrop" id="deleteChatModal">
+    <div class="modal">
+      <h3>Delete this chat?</h3>
+      <p id="deleteChatMessage">This will permanently delete the chat and can't be undone.</p>
+      <div class="modal-actions">
+        <button class="modal-btn" id="deleteChatCancelBtn">No, keep it</button>
+        <button class="modal-btn danger" id="deleteChatConfirmBtn">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <main class="chat-area">
+    <div class="chat-header">
+      <div class="header-left">
+        <button class="hamburger" id="hamburgerBtn" aria-label="Toggle sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
-         GRAPHITTI
-        </h1>
-        <div class="tagline-row">
-          <span class="tagline-line"></span>
-          <p class="tagline">Graph-Native Web Intelligence</p>
-          <span class="tagline-line"></span>
+        </button>
+        <div>
+          <div class="header-brand">
+            <span class="header-brand-icon">
+              <svg width="16" height="16" viewBox="0 0 34 34" fill="none">
+                <circle cx="10" cy="11" r="2.4" fill="#F4F2EA"/>
+                <circle cx="24" cy="9" r="2.4" fill="#F4F2EA"/>
+                <circle cx="17" cy="24" r="2.4" fill="#F4F2EA"/>
+                <line x1="10" y1="11" x2="24" y2="9" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+                <line x1="10" y1="11" x2="17" y2="24" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+                <line x1="24" y1="9" x2="17" y2="24" stroke="#F4F2EA" stroke-width="1" opacity="0.5"/>
+              </svg>
+            </span>
+            <span class="header-brand-text">Graphitti</span>
+          </div>
+          <h2>Medical AI Assistant</h2>
+          <p>Answers are grounded in the connected knowledge graph</p>
         </div>
       </div>
-
-    <div class="main-container">
-      
-      <div class="input-group">
-        <h2 class="input-label question-heading">
-          <svg class="heading-icon question-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
-          <path d="M12 17h.01"/>
-          </svg>
-        Ask a Medical Question
-        </h2>
-        <input
-        type="text"
-        placeholder="For example: What are the prevention methods for dengue?"
-        class="text-input js-question-input">
-        <p class="example-text">
-        Ask about topics available in the medical knowledge base.
-        </p>
+      <div class="header-right">
+        <div class="depth-toggle" id="depthToggle">
+          <span class="depth-label">Depth</span>
+          <button class="depth-btn active" data-depth="1">1</button>
+          <button class="depth-btn" data-depth="2">2</button>
+        </div>
+        <button class="add-site" id="addSiteBtn">+ <span>Add website</span></button>
       </div>
+    </div>
 
-      <div class="button-container">
-        <button class="ask-button js-ask-button">
-            <svg class="button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/>
-            <path d="m21.854 2.147-10.94 10.939"/>
-            </svg>
-          Get Answer
+    <div class="conversation" id="conversation">
+      <div class="msg bot">
+        <div class="avatar bot">GX</div>
+        <div>
+          <div class="bubble">
+            Hi, I'm your Graphitti medical assistant. Ask me about a condition, symptom, or treatment and I'll answer using the connected knowledge graph.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <div class="input-shell">
+        <textarea id="userInput" rows="1" placeholder="Ask a medical question..."></textarea>
+        <button class="send-btn" id="sendBtn" aria-label="Send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
         </button>
       </div>
-
-      <div class="result-section">
-
-        <div class="answer-section">
-          <h2 class="result-heading answer-heading">
-            <svg class="heading-icon answer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/>
-            </svg>
-          Answer
-          </h2>
-          <div class="answer-box">
-            <p class="answer-text">No answer yet.</p>
-          </div>
-        </div>
-
-      <div class="status-section">
-        <h2 class="result-heading status-heading">
-          <svg class="heading-icon graph-status-icon"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round">
-            <circle cx="12" cy="5" r="2.75"></circle>
-            <circle cx="5" cy="18" r="2.75"></circle>
-            <circle cx="19" cy="18" r="2.75"></circle>
-            <path d="M10.7 6.5 6.3 16.5"></path>
-            <path d="m13.3 6.5 4.4 10"></path>
-            <path d="M7 18h10"></path>
-          </svg>
-          Knowledge Graph Status
-          </h2>
-          <div class="status-box">
-            <p class="status-text"><span    class="status-dot">&bull;</span>
-            Medical knowledge base ready</p>
-          </div>
-        </div>
-
-      </div>
-
+      <p class="disclaimer">Graphitti provides informational answers, not medical diagnosis.</p>
     </div>
+  </main>
 
-    <div class="footer">
-      <p> Graphitti &mdash; Turning websites into knowledge graphs and answers.
-        <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/>
-        <path d="M20 2v4"/>
-        <path d="M22 4h-4"/>
-        <circle cx="4" cy="20" r="2"/>
-        </svg>
-      </p>
-    </div>
-
-   
-  <script src="script.js"></script>
-  </body>
+<script src="script.js"></script>
+</body>
 </html>

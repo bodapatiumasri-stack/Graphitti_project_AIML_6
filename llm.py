@@ -1,42 +1,45 @@
 import os
-import cohere
+from groq import Groq
+from dotenv import load_dotenv
 
-client = cohere.ClientV2(os.getenv("COHERE_API_KEY"))
+load_dotenv()
 
-def generate_answer(query: str, context: str) -> str:
-       
-    greetings = ["hi", "hello", "hey", "hii", "helo", "hai"]
-    if query.lower().strip().rstrip("!?.") in greetings:
-        return "Hello! I am Graphitti, a Graph-Native Web Intelligence Assistant. I can answer medical questions about diseases, symptoms, drugs and treatments. Try asking me something like 'What are symptoms of diabetes?' or 'What drug treats asthma?'"
+def generate_answer(query: str, context: str, chat_history: list = None) -> str:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return "GROQ_API_KEY is not set in .env. Please add it to generate LLM answers."
 
+    client = Groq(api_key=api_key)
+    trimmed_context = context[:2500].strip() if context else "No context available."
+    system_prompt = (
+    "You are Graphitti, an intelligent medical AI assistant powered by a Knowledge Graph.\n"
+    "Answer accurately based on the Knowledge Context provided below.\n\n"
+    "STRICT RULES:\n"
+    "1. Do NOT use asterisks or stars like ** or * anywhere in your response\n"
+    "2. Do NOT bold any text\n"
+    "3. Use numbered points like 1. 2. 3. for lists\n"
+    "4. Write in plain text only\n"
+    "5. Give answer in English only\n"
+    "6. Be concise and easy to read\n\n"
+    "7.Use side headings if possible to organize the answer\n"
+    "8. Keep the answer concise but informative, focusing on the most relevant information\n"
+    f"KNOWLEDGE CONTEXT:\n{trimmed_context}"
+     )  
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    if chat_history:
+        messages.extend(chat_history[-4:])
 
-    if not context.strip():
-        return "I don't have enough information to answer this question."
+    user_content = f"Context:\n{context}\n\nUser Question: {query}"
+    messages.append({"role": "user", "content": user_content})
 
-    prompt = f"""You are Graphitti, a helpful medical assistant powered by a knowledge graph built from WebMD.
-
-IMPORTANT RULES:
-- Answer the question using the context provided below
-- Be helpful even if the question has spelling mistakes or missing question marks or having grammatical errors
-- If the user asks about symptoms, causes, treatments or drugs — answer from context
-- Keep answer clear and readable
-- Do NOT say "I don't have relevant information about it" if there is any related information in the context
-- If context has partial information, use it to give a helpful partial answer
-- if they say "Hi", respond calmly and introduce yourself and your capabilities
-Context from Knowledge Graph and Documents:
-{context}
-
-User Question: {query}
-
-Answer helpfully and clearly:"""
-
-    response = client.chat(
-        model="command-r-plus-08-2024",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    return response.message.content[0].text.strip()
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.2,
+            max_tokens=600
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"LLM Error: {str(e)}"
